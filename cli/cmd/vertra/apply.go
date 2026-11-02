@@ -83,7 +83,18 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 			func() { now.volume = install.DatabaseVolume(ctx, a.runner, c) },
 			func() { deps, depsErr = platform.Deployments(ctx, a.runner, c) },
 			func() { now.move = c.Database.Type == "managed" && backup.NeedsMove(ctx, a.runner, c) },
+			func() {
+				if c.ChecksSignatures() {
+					now.policyController = install.InstalledIn(ctx, a.runner, c, "cosign-system", "policy-controller")
+				}
+			},
+			func() {
+				if c.ExternalSecrets {
+					now.externalSecrets = install.InstalledIn(ctx, a.runner, c, "external-secrets", "external-secrets")
+				}
+			},
 		)
+		now.applied = config.Applied(dir)
 		if depsErr == nil {
 			now.asleep = platform.Asleep(deps)
 		}
@@ -284,6 +295,10 @@ func (a *app) apply(ctx context.Context, cmd *cobra.Command, dir string, c *conf
 			}
 		}
 	}
+	// Applied: what the next screen compares against.
+	if err := c.SaveApplied(dir); err != nil {
+		return err
+	}
 	if installed[install.ConsoleRelease] == "" {
 		if pw := install.Password(ctx, a.runner, c); pw != "" {
 			path, err := savePassword(dir, pw)
@@ -306,6 +321,10 @@ type current struct {
 	// move: the data is in the in-cluster Postgres, and the database is
 	// now managed: apply copies it over.
 	move bool
+	// The charts installed beside the platform (name-version), when used.
+	policyController, externalSecrets string
+	// vertra.yaml as last applied: nil if unknown.
+	applied *config.Config
 }
 
 // buildPlan assembles the approval screen.
@@ -331,7 +350,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 	}
 	p.Title = fmt.Sprintf("Vertra %s → %s [%s]", what, where, env)
 
-	floor := plan.Floors[c.Size]
+	floor := plan.FloorOf(c)
 	scale := fmt.Sprintf("yes: sleeps after %s with nothing running and nobody using the console", c.ScaleDown.IdleAfter)
 	if c.ScaleDown.Schedule != "" {
 		scale += fmt.Sprintf(", and at %q once nothing runs", c.ScaleDown.Schedule)
@@ -445,7 +464,7 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		}
 		p.Changes = append(p.Changes, plan.Line{Label: "Will build", Text: fmt.Sprintf("%s from source, tagged %s, %s", img.Names(), img.Tag, dest)})
 	}
-	var installs, upgrades []string
+	var installs, upgrades, same []string
 	for _, r := range []struct{ release, chart string }{
 		{install.KernelRelease, "execution-kernel"}, {install.ConsoleRelease, "execution-console"},
 	} {
@@ -453,10 +472,13 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		if c.Vertra == "source" {
 			target = r.chart + " from source"
 		}
-		if prev := installed[r.release]; prev != "" {
-			upgrades = append(upgrades, fmt.Sprintf("%s (now %s) to %s", r.release, prev, target))
-		} else {
+		switch prev := installed[r.release]; {
+		case prev == "":
 			installs = append(installs, target)
+		case c.Vertra != "source" && releases.ChartVersion(prev) == c.Vertra:
+			same = append(same, r.release)
+		default:
+			upgrades = append(upgrades, fmt.Sprintf("%s (now %s) to %s", r.release, prev, target))
 		}
 	}
 	if len(installs) > 0 {
@@ -464,6 +486,23 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 	}
 	if len(upgrades) > 0 {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will upgrade", Text: strings.Join(upgrades, "; ")})
+	}
+	if len(same) > 0 {
+		with := "vertra.yaml's settings"
+		if c.Values != "" {
+			with += " and " + c.Values + " as it is now"
+		}
+		p.Changes = append(p.Changes, plan.Line{Label: "Will apply", Text: fmt.Sprintf("%s again, staying at %s, with %s", strings.Join(same, " and "), c.Vertra, with)})
+	}
+	if len(installs) == 0 && now.applied != nil {
+		changed, err := config.Changed(now.applied, c)
+		switch {
+		case err != nil:
+		case len(changed) > 0:
+			p.Changes = append(p.Changes, plan.Line{Label: "Changed", Text: "since the last apply: " + strings.Join(changed, ", ")})
+		default:
+			p.Notes = append(p.Notes, "Nothing in vertra.yaml changed since the last apply.")
+		}
 	}
 	if now.move {
 		server := map[string]string{"gcp": "Cloud SQL", "aws": "Amazon RDS"}[c.Target]
@@ -483,10 +522,14 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 	}
 
 	if c.ChecksSignatures() {
-		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "policy-controller " + install.PolicyControllerChart + " into cosign-system: in team namespaces, only images catalog CI signed run"})
+		if line, ok := addOn("policy-controller", install.PolicyControllerChart, now.policyController, "cosign-system: in team namespaces, only images catalog CI signed run"); ok {
+			p.Changes = append(p.Changes, line)
+		}
 	}
 	if c.ExternalSecrets {
-		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "External Secrets Operator " + install.ExternalSecretsChart + " into external-secrets, for teams' SecretStores"})
+		if line, ok := addOn("External Secrets Operator", install.ExternalSecretsChart, now.externalSecrets, "external-secrets, for teams' SecretStores"); ok {
+			p.Changes = append(p.Changes, line)
+		}
 	}
 	if c.Target == "kind" && c.Size == "auto" {
 		p.Changes = append(p.Changes, plan.Line{Label: "Will install", Text: "metrics-server " + install.MetricsServerChart + " into kube-system, for the auto size's autoscalers"})
@@ -519,6 +562,20 @@ func buildPlan(ctx context.Context, c *config.Config, env string, s cluster.Stat
 		p.Notes = append(p.Notes, "While asleep, the console and API don't answer: catalog CI and automation fail until `vertra wake`.")
 	}
 	return p
+}
+
+// addOn is the screen's line for a chart installed beside the platform:
+// none when the version it pins is already there.
+func addOn(name, version, installed, where string) (plan.Line, bool) {
+	switch {
+	case installed == "":
+		return plan.Line{Label: "Will install", Text: name + " " + version + " into " + where}, true
+	case releases.ChartVersion(installed) == version:
+		return plan.Line{}, false
+	case releases.Compare(releases.ChartVersion(installed), version) > 0:
+		return plan.Line{Label: "Will downgrade", Text: fmt.Sprintf("%s (now %s, newer) to %s, the version vertra pins, in %s", name, installed, version, where)}, true
+	}
+	return plan.Line{Label: "Will upgrade", Text: fmt.Sprintf("%s (now %s) to %s, in %s", name, installed, version, where)}, true
 }
 
 // logsLine says what log search keeps, and where, for the approval screen.

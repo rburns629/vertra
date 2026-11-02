@@ -27,7 +27,7 @@ spec:
         kubectl.kubernetes.io/default-container: postgres
         {{- if .Values.tls.enabled }}
         # A rotated certificate (tls.yaml) or a changed pg_hba restarts it.
-        checksum/tls: {{ (lookup "v1" "Secret" .Release.Namespace (printf "%s-tls" (include "execution-kernel.fullname" .))).data | toJson | sha256sum }}
+        checksum/tls: {{ include "execution-kernel.tlsChecksum" . }}
         checksum/hba: {{ include "execution-kernel.pgHba" . | sha256sum }}
       {{- end }}
     spec:

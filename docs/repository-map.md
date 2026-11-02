@@ -526,7 +526,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `cmd/vertra/main.go` | The root command, its shared flags (`--config`, `-v`, `--non-interactive`) and loading an environment. |
 | `cmd/vertra/help.go` | Every command's help and examples, the `settings` and `sizes` help topics, and `vertra man`; a test checks every command has its help. |
 | `cmd/vertra/init.go` | `init <env>`: the questions (or flags), then `deploy/<env>/vertra.yaml`. |
-| `cmd/vertra/apply.go` | `apply`: the approval screen, then registry, cluster, namespace, images and both releases. |
+| `cmd/vertra/apply.go` | `apply`: the approval screen (what changed since `applied.yaml`, the add-ons only when missing or older), then registry, cluster, namespace, images and both releases. |
 | `cmd/vertra/operate.go` | `check`, `status`, `sleep`, `wake`, `console` and `destroy`. |
 | `cmd/vertra/backup.go` | `backup`, `backups` and `restore`. |
 | `cmd/vertra/logs.go` | `logs`: the platform's components' logs, or one execution's steps' from their team namespaces. |
@@ -542,7 +542,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/cluster/` | The kind cluster and its local registry: inspect, create, delete; namespaces. |
 | `internal/install/` | The platform images (built from source or released), the generated Helm values, and `helm upgrade`; `database.go`, a managed database's values, Secrets and `kernel database-setup` Job. |
 | `internal/platform/` | The installed platform: deployments, sleep, wake, running steps, console access. |
-| `internal/plan/` | The approval screen and the sizes' platform floors. |
+| `internal/plan/` | The approval screen and the sizes' platform floors (`FloorOf`: with the optional parts turned on). |
 | `internal/gcp/` | What a gcp install needs from gcloud, as you: the project's checks, the cluster's credentials, a short-lived Docker sign-in, the module's inputs and the registry paths. |
 | `internal/access/` | Guided access: who you're signed in as (AWS, Google, GitHub), where an install would go, and what that allows (regions an organization's policy permits, budgets, OpenTofu's sign-in, a project's existing resources), as the approval screen's Access block and problems with fixes and guides; AWS's errors classified whole. |
 | `cmd/vertra/init_access.go` | The guided access steps in `init`: choosing a sign-in and running it, choosing a project or a region from those that answer, offering a budget, recording who set the environment up. |
@@ -554,7 +554,7 @@ Fake products used by the demos and the kernel's integration tests. They deliber
 | `internal/catalogtemplate/` | `catalog-template/` inside a released vertra: `template.tgz`, empty in git, written by the release workflow (`git archive`) before it builds. |
 | `internal/githost/` | The catalog's git host, as you through `gh`: repositories, pushes (gh signs git in for that command only), variables, secrets from stdin, Environments, workflow runs; GitHub's single sign-on refusals. |
 | `internal/consoleapi/` | The console's API as vertra uses it, over the generated Connect clients: signing in as the admin, revoking the tokens catalogs once held, syncing the catalog, running a DAG and watching it finish. Tested against fake Connect handlers. |
-| `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen), apply the approved plan, outputs, destroy. |
+| `internal/tofu/` | Runs OpenTofu in an environment's `tofu/`: init, plan (summarised for the approval screen, each resource type named in words: a test checks every module's), apply the approved plan, outputs, destroy. |
 | `internal/backup/` | The databases' backups: the backup Job run now, dumps to and from this machine, the bucket's pairs, the restore (writers stopped, both databases replaced, started again), a managed database's on-demand backups, and moving an install's data into a managed database (`move.go`). |
 | `internal/releases/` | Vertra's releases (GitHub's list, cached a day): the newest, what an upgrade passes over, whether a version change can be applied, and a release's binaries' checksums. |
 | `internal/pricing/` | Live prices for the approval screen: Google's price catalog (read with your gcloud sign-in; `gcp_account.go`: your billing account's prices, when you may read them) and AWS's Price List and Spot price history (with your AWS sign-in), fetched a few calls at a time and each cached a day, and their cost models; `testdata/` holds real price entries. |

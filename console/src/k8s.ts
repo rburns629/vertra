@@ -109,6 +109,29 @@ export interface SecretGrant {
  * respond with a 4xx instead of Fastify's default 500 for anything thrown. */
 export class NamespaceNotFoundError extends Error {}
 
+/** External Secrets Operator doesn't serve the kind: a create of one
+ * answers 404 when the namespace exists. Not installed, mostly; or a file
+ * names an apiVersion the installed one no longer serves. */
+export class ExternalSecretsMissingError extends Error {
+  constructor(apiVersion: string) {
+    super(
+      `External Secrets Operator isn't installed on this cluster, or doesn't serve ${apiVersion}, so this can't be made. ` +
+        "With vertra: `vertra config set -e <env> externalSecrets true`, then `vertra apply <env>`; " +
+        "if it's installed, the file's apiVersion is one it doesn't serve (external-secrets.io/v1 is current).",
+    );
+  }
+}
+
+/** Creates one of ESO's objects; a 404 means ESO doesn't serve its kind. */
+async function createEsoObject(request: k8s.CustomObjectsApiCreateNamespacedCustomObjectRequest): Promise<void> {
+  try {
+    await getApis().custom.createNamespacedCustomObject(request);
+  } catch (error) {
+    if (isNotFound(error)) throw new ExternalSecretsMissingError(`${request.group}/${request.version}`);
+    throw error;
+  }
+}
+
 /** A Secret of that name exists in the namespace but isn't the team's
  * registered secret (a SecretStore's credentials, something applied by
  * hand): it won't be overwritten, or registered for tasks to mount. */
@@ -338,7 +361,7 @@ async function upsertExternalSecret(grant: ExternalSecretGrant): Promise<void> {
     });
   } catch (error) {
     if (!isNotFound(error)) throw error;
-    await custom.createNamespacedCustomObject({
+    await createEsoObject({
       group: ESO_GROUP,
       version: ESO_VERSION,
       namespace: grant.namespace,
@@ -766,7 +789,7 @@ export async function applySecretStoreObjects(
       });
     } catch (error) {
       if (!isNotFound(error)) throw error;
-      await custom.createNamespacedCustomObject({ ...target, body });
+      await createEsoObject({ ...target, body });
     }
   }
 }

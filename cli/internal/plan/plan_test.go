@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/rburns629/vertra/cli/internal/config"
 )
 
 func TestWrap(t *testing.T) {
@@ -49,5 +51,25 @@ func TestRenderAlignsAndWraps(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
+	}
+}
+
+func TestFloorOf(t *testing.T) {
+	c := config.Default("gcp")
+	c.Size, c.Gateway.Enabled, c.Logs.Enabled, c.Monitoring.Enabled = "minimal", false, false, false
+	if f := FloorOf(c); f.CPU != Floors["minimal"].CPU || f.Memory != Floors["minimal"].Memory {
+		t.Fatalf("nothing optional: %s, %s", f.CPU, f.Memory)
+	}
+	c.Gateway.Enabled = true
+	if f := FloorOf(c); f.CPU != "0.6 vCPU" || f.Memory != "1.81 GiB" {
+		t.Fatalf("with the gateway: %s, %s", f.CPU, f.Memory)
+	}
+	c.Size, c.Logs.Enabled = "auto", true
+	if f := FloorOf(c); f.CPU != "1–1.4 vCPU" || f.Memory != "2.69–4.19 GiB" {
+		t.Fatalf("auto, with the gateway and logs: %s, %s", f.CPU, f.Memory)
+	}
+	c.Monitoring = config.Monitoring{Enabled: true, Provider: "operator"}
+	if f := FloorOf(c); f.CPU != "1–1.4 vCPU" {
+		t.Fatalf("the cluster's own Prometheus costs nothing here: %s", f.CPU)
 	}
 }

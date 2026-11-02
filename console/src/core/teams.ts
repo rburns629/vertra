@@ -18,7 +18,7 @@ import { Code } from "@connectrpc/connect";
 import { Type } from "@sinclair/typebox";
 import type { FastifyBaseLogger } from "fastify";
 import { groupSources, teamIsMapped } from "../sso.js";
-import { ApiError, forbiddenUnlessAdmin } from "../apiError.js";
+import { ApiError, externalSecretsMissing, forbiddenUnlessAdmin } from "../apiError.js";
 import { canActForTeam, ensureTeamMaintainer, ensureTeamMember } from "../auth/access.js";
 import type { AuthUser } from "../auth/plugin.js";
 import { hasScope, SCOPES } from "../auth/scopes.js";
@@ -48,6 +48,7 @@ import { db } from "../db/client.js";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   applySecretStoreObjects,
+  ExternalSecretsMissingError,
   deleteTeamNamespace,
   listTaskPods,
   NamespaceNotTeamsError,
@@ -470,6 +471,7 @@ export async function applySecretStore(
   } catch (error) {
     // Another team claimed one between the check and the insert.
     if (isUniqueViolation(error)) throw inUse(identities);
+    if (error instanceof ExternalSecretsMissingError) throw externalSecretsMissing(error);
     throw error;
   }
   log.info(

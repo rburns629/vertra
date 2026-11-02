@@ -21,6 +21,7 @@ import { buildApp } from "../src/index.js";
 import {
   applySecretStoreObjects,
   deleteTeamNamespace,
+  ExternalSecretsMissingError,
   gatewayIngressPolicy,
   NamespaceNotTeamsError,
   ProtectedNamespaceError,
@@ -34,7 +35,7 @@ import { syncSchedulerLogsBindings } from "../src/schedulerLogs.js";
 import { syncPullSecrets } from "../src/pullSecret.js";
 import { syncTeamNetworkPolicies } from "../src/teamNetwork.js";
 import { checkSecretStoreObjects, cloudIdentities } from "../src/secretStores.js";
-import { caller, problemMessages, type RpcError } from "./rpc.js";
+import { caller, failureCode, problemMessages, type RpcError } from "./rpc.js";
 
 vi.mock("../src/k8s.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/k8s.js")>()),
@@ -257,6 +258,16 @@ describe("applying a team's SecretStore file", () => {
     expect(refused.code).toBe("invalid_argument");
     expect(problemMessages(refused.body)[0]).toContain("namespace must be");
     expect(applySecretStoreObjects).not.toHaveBeenCalled();
+  });
+
+  it("says External Secrets Operator isn't installed, as the install's to fix", async () => {
+    const team = name("no-eso");
+    await createTeam(team);
+    vi.mocked(applySecretStoreObjects).mockRejectedValueOnce(new ExternalSecretsMissingError("external-secrets.io/v1"));
+    const refused = await call<RpcError>(admin, "TeamService/ApplySecretStore", { team, documents: [store(team)] });
+    expect(refused.code).toBe("failed_precondition");
+    expect(failureCode(refused.body)).toBe("EXTERNAL_SECRETS_MISSING");
+    expect(refused.body.message).toContain("`vertra config set -e <env> externalSecrets true`");
   });
 });
 

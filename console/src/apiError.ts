@@ -53,3 +53,7 @@ function connectCodeFor(statusCode: number): Code {
 export const forbiddenUnlessAdmin = (caller: { isAdmin: boolean } | undefined, message = "Admin access required."): void => {
   if (!caller?.isAdmin) throw new ApiError(403, "FORBIDDEN", message);
 };
+
+/** k8s.ts's ExternalSecretsMissingError, as a refusal: the install's to fix. */
+export const externalSecretsMissing = (error: Error): ApiError =>
+  new ApiError(412, "EXTERNAL_SECRETS_MISSING", error.message, Code.FailedPrecondition);

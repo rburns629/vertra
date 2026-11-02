@@ -432,3 +432,30 @@ func TestValidateAlertEmail(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 }
+
+func TestChangedSinceApplied(t *testing.T) {
+	dir := t.TempDir()
+	if Applied(dir) != nil {
+		t.Fatal("nothing applied yet")
+	}
+	c := Default("kind")
+	c.FillDefaults()
+	c.Monitoring.PodMonitorLabels = map[string]string{"release": "kps"}
+	if err := c.SaveApplied(dir); err != nil {
+		t.Fatal(err)
+	}
+	was := Applied(dir)
+	if changed, err := Changed(was, c); err != nil || len(changed) != 0 {
+		t.Fatalf("as applied: %v %v", changed, err)
+	}
+	c.Gateway.BackendHosts = []string{"api.example.com"}
+	c.Monitoring.PodMonitorLabels = map[string]string{"release": "other"}
+	c.ScaleDown.Enabled = !c.ScaleDown.Enabled
+	changed, err := Changed(was, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(changed, " "); got != "gateway.backendHosts monitoring.podMonitorLabels scaleDown.enabled" {
+		t.Errorf("changed: %s", got)
+	}
+}

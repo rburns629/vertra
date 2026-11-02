@@ -7,8 +7,12 @@ package plan
 import (
 	"fmt"
 	"io"
+	"math"
+	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/rburns629/vertra/cli/internal/config"
 )
 
 // Floor is a size's platform requests while awake, database in-cluster,
@@ -45,6 +49,44 @@ var Floors = map[string]Floor{
 	"auto": {CPU: "0.8–1.2 vCPU", Memory: "2.25–3.75 GiB", Copies: "one to three copies of the console and API, on load", Volume: "50Gi",
 		Steps:    "up to 50 at once (20 per team), 0.5 vCPU and 1 GiB each unless a product says",
 		CPUCores: [2]float64{0.8, 1.2}, MemGiB: [2]float64{2.25, 3.75}, StepCPU: 0.5, StepMemGiB: 1, StepCap: 50, Spot: true, VolumeGiB: 50},
+}
+
+// FloorOf is c's size's floor with the optional parts c turns on, each at
+// its chart's requests: the gateway (gateway.resources), log search
+// (logs.loki and logs.collector) and a Prometheus of the install's own
+// (monitoring.prometheus, bundled or writing to Amazon's).
+func FloorOf(c *config.Config) Floor {
+	f := Floors[c.Size]
+	var parts [][2]float64 // vCPU, GiB
+	if c.Gateway.Enabled {
+		parts = append(parts, [2]float64{0.05, 0.0625})
+	}
+	if c.Logs.Enabled {
+		parts = append(parts, [2]float64{0.15, 0.375})
+	}
+	if p := c.Monitoring.ProviderName(); c.Monitoring.Enabled && (p == "bundled" || p == "amazon") {
+		parts = append(parts, [2]float64{0.05, 0.25})
+	}
+	if len(parts) == 0 {
+		return f
+	}
+	for _, p := range parts {
+		for i := range f.CPUCores {
+			f.CPUCores[i] += p[0]
+			f.MemGiB[i] += p[1]
+		}
+	}
+	f.CPU, f.Memory = span(f.CPUCores, "vCPU"), span(f.MemGiB, "GiB")
+	return f
+}
+
+// span says a lowest and highest amount as the Floors' words do.
+func span(v [2]float64, unit string) string {
+	n := func(x float64) string { return strconv.FormatFloat(math.Round(x*100)/100, 'f', -1, 64) }
+	if n(v[0]) == n(v[1]) {
+		return n(v[0]) + " " + unit
+	}
+	return n(v[0]) + "–" + n(v[1]) + " " + unit
 }
 
 // Line is one labelled line of the screen.

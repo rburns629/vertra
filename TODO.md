@@ -84,25 +84,13 @@ it was seen.
   catalog create` now pins the release it is; a catalog made from the
   template by hand needs `pin-vertra.sh`. Worth a release step that opens
   the pin's pull request.
-- [ ] **External Secrets Operator is installed only with `externalSecrets:
-  true`**, and `init` never asks, even for a catalog with SecretStores.
-  The console then reports the missing operator as a raw 404 dump; it
-  should say "External Secrets Operator isn't installed: `vertra config
-  set externalSecrets true`".
-- [ ] **`apply`'s screen leaves things out**: a settings or values-file
-  change (`gateway.backendHosts`, `postgres.nonRoot`) shows only "upgrade
-  0.6.0 to 0.6.0"; it says "Will install policy-controller" when it's
-  installed; the cost leaves out the gateway (0.55 vCPU said, 0.6
-  requested); the cloud list shows raw OpenTofu types
-  (`aws_prometheus_workspace`).
-- [ ] **A settings-only `apply` restarted Postgres and kernel-api once**
-  (EKS, the second apply: `checksum/tls` changed, not on the third). Is
-  the kernel's TLS certificate made again once after install? The console
-  logged 20 s of refused connections.
-- [ ] `gke-verify-release` skips `execution-gateway` (it is signed; the
-  check doesn't look).
+- [ ] `apply`'s cost leaves out the optional parts' volumes (log search's
+  10 GiB, the bundled Prometheus's 2 GiB); their CPU and memory are counted.
 
 Console and gateway:
+- [ ] A SecretStore file the cluster refuses (ESO missing, say) still
+  leaves its ServiceAccounts and `eso-auth` written: the console writes
+  them before the store. Write the store first, or remove them on failure.
 - [ ] **The console says a teamless admin may call an API the gateway
   refuses** (`mayCall` true on a `shareWith: *` API; the gateway answers
   NOT_SHARED, as a caller needs a team). Make them agree.

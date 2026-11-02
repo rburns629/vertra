@@ -831,6 +831,104 @@ func (c *Config) Save(dir string) error {
 	return os.WriteFile(filepath.Join(dir, FileName), append([]byte(header), data...), 0o644)
 }
 
+// AppliedFile is vertra.yaml as last applied, kept beside it: what the next
+// apply's screen says changed since.
+const AppliedFile = "applied.yaml"
+
+// SaveApplied writes dir/applied.yaml, once an apply has used c.
+func (c *Config) SaveApplied(dir string) error {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+	head := "# vertra.yaml as last applied, written by vertra apply: its screen names what changed since.\n"
+	return os.WriteFile(filepath.Join(dir, AppliedFile), append([]byte(head), data...), 0o644)
+}
+
+// Applied reads dir/applied.yaml; nil when there's none (an install applied
+// by an older vertra) or it can't be read, as it only informs the screen.
+func Applied(dir string) *Config {
+	data, err := os.ReadFile(filepath.Join(dir, AppliedFile))
+	if err != nil {
+		return nil
+	}
+	var c Config
+	if err := yaml.Unmarshal(data, &c); err != nil {
+		return nil
+	}
+	c.FillDefaults()
+	return &c
+}
+
+// Changed lists the settings whose values differ between was and now, as
+// dotted keys, sorted.
+func Changed(was, now *Config) ([]string, error) {
+	a, err := flatten(was)
+	if err != nil {
+		return nil, err
+	}
+	b, err := flatten(now)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for k, v := range b {
+		if a[k] != v {
+			out = append(out, k)
+		}
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			out = append(out, k)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// flatten is every setting of c as dotted key: value, a list or a map of
+// labels as its YAML.
+func flatten(c *Config) (map[string]string, error) {
+	node, err := toNode(c)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	var walk func(n *yaml.Node, prefix string) error
+	walk = func(n *yaml.Node, prefix string) error {
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			key := n.Content[i].Value
+			if prefix != "" {
+				key = prefix + "." + key
+			}
+			v := n.Content[i+1]
+			kind, known := settingKind(key)
+			switch {
+			case v.Kind == yaml.MappingNode && known && kind == reflect.Map:
+				data, err := yaml.Marshal(v)
+				if err != nil {
+					return err
+				}
+				out[key] = string(data)
+			case v.Kind == yaml.MappingNode:
+				if err := walk(v, key); err != nil {
+					return err
+				}
+			case v.Kind == yaml.ScalarNode:
+				out[key] = v.Value
+			default:
+				data, err := yaml.Marshal(v)
+				if err != nil {
+					return err
+				}
+				out[key] = string(data)
+			}
+		}
+		return nil
+	}
+	return out, walk(node, "")
+}
+
 // Get returns the value at a dotted key, e.g. scaleDown.enabled.
 func Get(c *Config, key string) (string, error) {
 	node, err := toNode(c)

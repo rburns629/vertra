@@ -959,7 +959,14 @@ func Upgrade(ctx context.Context, r *run.Runner, c *config.Config, dir, release 
 // Installed returns a release's chart (name-version), or "" if it isn't
 // installed.
 func Installed(ctx context.Context, r *run.Runner, c *config.Config, release string) string {
-	out, err := r.Output(ctx, "helm", "list", "--kube-context", cluster.Context(c), "--namespace", c.Namespace,
+	return InstalledIn(ctx, r, c, c.Namespace, release)
+}
+
+// InstalledIn is Installed for a release in another namespace (the charts
+// vertra installs beside the platform: policy-controller, External Secrets
+// Operator).
+func InstalledIn(ctx context.Context, r *run.Runner, c *config.Config, namespace, release string) string {
+	out, err := r.Output(ctx, "helm", "list", "--kube-context", cluster.Context(c), "--namespace", namespace,
 		"--filter", "^"+release+"$", "--output", "json")
 	if err != nil {
 		return ""

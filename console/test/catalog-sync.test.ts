@@ -23,7 +23,7 @@ import { createTeam } from "../src/db/queries.js";
 import { auditLog, catalogSync, products, teams, templates, wiringTypes } from "../src/db/schema.js";
 import { ReleaseSchema, type Release } from "../src/gen/vertra/catalog/v1/release_pb.js";
 import { buildApp } from "../src/index.js";
-import { applySecretStoreObjects, createVerifyJob, readScanJob } from "../src/k8s.js";
+import { applySecretStoreObjects, createVerifyJob, ExternalSecretsMissingError, readScanJob } from "../src/k8s.js";
 import { fetchRelease, listTags } from "../src/registry.js";
 import { caller, rpcClient } from "./rpc.js";
 import { lockWiringTypes } from "./wiringTypesLock.js";
@@ -163,6 +163,26 @@ describe("applying a release", () => {
     expect(row?.commit).toBe("c2");
     expect(row?.problems).toEqual([{ item: `product ${prefix}-ghost-x-run`, message: expect.stringContaining("No such team") as string }]);
     expect((await catalogProducts()).length).toBe(3);
+  });
+
+  it("says ESO isn't installed, and never shows a cluster's error itself", async () => {
+    vi.mocked(applySecretStoreObjects)
+      .mockRejectedValueOnce(new ExternalSecretsMissingError("external-secrets.io/v1"))
+      .mockRejectedValueOnce(new (class ApiException extends Error {})("HTTP-Code: 500 Body: {...} Headers: {audit-id: x}"));
+    publish(
+      release({
+        commit: "c2",
+        teams: [{ name: teamA, secretStoreDocuments: [store] }, { name: teamB, secretStoreDocuments: [store] }],
+        products: [product(teamA, "site"), product(teamA, "site", "remove"), product(teamB, "db")],
+      }),
+      digestOf(80),
+    );
+    await syncCatalog(log);
+    const problems = (await status())?.problems as { item: string; message: string }[];
+    expect(problems).toHaveLength(2);
+    expect(problems[0]?.message).toContain("External Secrets Operator isn't installed");
+    expect(problems[0]?.message).toContain("vertra config set -e <env> externalSecrets true");
+    expect(problems[1]?.message).toBe("failed unexpectedly: the console's log has why");
   });
 
   it("unregisters what a later release drops, and retires a team it drops, never one an admin made", async () => {

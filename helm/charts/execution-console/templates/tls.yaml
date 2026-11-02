@@ -3,30 +3,15 @@ TLS for this chart's own Postgres (tls.enabled with postgres.enabled): a CA
 of this release's own and a certificate it signs for the Postgres
 Service, so it requires TLS and every client checks it reached the real
 one (sslmode=verify-full). Made once and kept, as the database password
-is; delete both Secrets and upgrade to rotate. kernel-api's, and the
+is (_helpers.tpl's tlsMade, which the Pod's checksum reads too); delete both Secrets and upgrade to rotate. kernel-api's, and the
 kernel's Postgres's, come from the kernel chart (tls.kernelCaSecret).
 */}}
 {{- if and .Values.tls.enabled .Values.postgres.enabled }}
 {{- $fullname := include "execution-console.fullname" . }}
 {{- $ns := .Release.Namespace }}
 {{- $name := printf "%s-tls" $fullname }}
-{{- $existing := (lookup "v1" "Secret" $ns $name).data | default dict }}
-{{- $days := int .Values.tls.days }}
-{{- $ca := dict }}
-{{- if and (hasKey $existing "ca.crt") (hasKey $existing "ca.key") }}
-  {{- $ca = buildCustomCert (index $existing "ca.crt") (index $existing "ca.key") }}
-{{- else }}
-  {{- $ca = genCA (printf "%s CA" $fullname) $days }}
-{{- end }}
-{{- $service := printf "%s-postgres" $fullname }}
-{{- $hosts := list $service (printf "%s.%s" $service $ns) (printf "%s.%s.svc" $service $ns) (printf "%s.%s.svc.cluster.local" $service $ns) }}
-{{- $crt := index $existing "postgres.crt" | default "" | b64dec }}
-{{- $key := index $existing "postgres.key" | default "" | b64dec }}
-{{- if not (and $crt $key (hasKey $existing "ca.key") (eq (index $existing "postgres.hosts" | default "" | b64dec) (join "," $hosts))) }}
-  {{- $cert := genSignedCert $service nil $hosts $days $ca }}
-  {{- $crt = $cert.Cert }}
-  {{- $key = $cert.Key }}
-{{- end }}
+{{- include "execution-console.tlsMade" . }}
+{{- $made := index .Values.tls "_made" }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -36,11 +21,11 @@ metadata:
     {{- include "execution-console.labels" . | nindent 4 }}
 type: Opaque
 data:
-  ca.crt: {{ $ca.Cert | b64enc }}
-  ca.key: {{ $ca.Key | b64enc }}
-  postgres.crt: {{ $crt | b64enc }}
-  postgres.key: {{ $key | b64enc }}
-  postgres.hosts: {{ join "," $hosts | b64enc }}
+  ca.crt: {{ $made.ca.crt | b64enc }}
+  ca.key: {{ $made.ca.key | b64enc }}
+  postgres.crt: {{ $made.postgres.crt | b64enc }}
+  postgres.key: {{ $made.postgres.key | b64enc }}
+  postgres.hosts: {{ $made.postgres.hosts | b64enc }}
 ---
 apiVersion: v1
 kind: Secret
@@ -51,5 +36,5 @@ metadata:
     {{- include "execution-console.labels" . | nindent 4 }}
 type: Opaque
 data:
-  ca.crt: {{ $ca.Cert | b64enc }}
+  ca.crt: {{ $made.ca.crt | b64enc }}
 {{- end }}

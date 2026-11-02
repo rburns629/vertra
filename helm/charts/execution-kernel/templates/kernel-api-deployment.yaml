@@ -30,7 +30,7 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- if .Values.tls.enabled }}
         # A rotated certificate restarts it (tls.yaml).
-        checksum/tls: {{ (lookup "v1" "Secret" .Release.Namespace (printf "%s-tls" (include "execution-kernel.fullname" .))).data | toJson | sha256sum }}
+        checksum/tls: {{ include "execution-kernel.tlsChecksum" . }}
         {{- end }}
     spec:
       securityContext:
