@@ -267,11 +267,13 @@ describe("runs", () => {
   it("counts the week's runs, filters by kind, and says who started each", async () => {
     const DAG = { ...RUN, executionId: "1b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a12", name: "kafka topics backfill", template: "", state: "EXECUTION_STATE_FAILED", submittedBy: "u9", submittedByEmail: "sam@acme.com" };
     const GONE = { ...RUN, executionId: "2b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a13", name: "old cleanup", template: "", state: "EXECUTION_STATE_SUCCEEDED" };
-    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [{ ...RUN, submittedBy: MEMBER.userId, submittedByEmail: MEMBER.email }, DAG, GONE] } });
+    const CHECK = { ...RUN, executionId: "3b6f6a1e-6c64-4d39-9a0d-7d4c1f6c2a14", name: "Check: gcp-platform-project-ready", template: "check", state: "EXECUTION_STATE_SUCCEEDED" };
+    await renderAt("/runs", MEMBER, { "ExecutionService/ListExecutions": { executions: [{ ...RUN, submittedBy: MEMBER.userId, submittedByEmail: MEMBER.email }, DAG, GONE, CHECK] } });
     expect(await screen.findByText("kafka topics backfill")).toBeTruthy();
     expect(screen.getByText("sam@acme.com")).toBeTruthy();
     expect(screen.getByText("you")).toBeTruthy();
     expect(screen.getByText("a deleted account")).toBeTruthy();
+    expect(screen.getByText("the readiness check")).toBeTruthy();
     expect(await screen.findByRole("button", { name: /^Failed this week 1/ })).toBeTruthy();
 
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Kind" }));
@@ -2229,6 +2231,28 @@ describe("a product's readiness", () => {
     fireEvent.click(screen.getByRole("button", { name: "Check now" }));
     await waitFor(() => { expect(checked).toEqual([{ name: "gcp-platform-project-create" }]); });
     expect(await screen.findByText(/checking now/i)).toBeTruthy();
+  });
+
+  it("says, while it's checked again, that what it lacks is the last answer", async () => {
+    await renderAt("/products", { ...MEMBER, teamNames: ["gcp-platform"] }, {
+      "ProductService/ListProducts": {
+        products: [
+          {
+            id: "p1",
+            name: "gcp-platform-project-create",
+            image: "registry.example/gcp-platform/project@sha256:aa",
+            action: "create",
+            teamName: "gcp-platform",
+            releases: [{ image: "registry.example/gcp-platform/project@sha256:aa" }],
+            readiness: { state: "checking", principal: "project-sa@acme.iam", missing: ["roles/resourcemanager.projectCreator on folder 12"] },
+          },
+        ],
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "project" }));
+    expect(await screen.findByText("roles/resourcemanager.projectCreator on folder 12")).toBeTruthy();
+    expect(screen.getByText(/its last check's answer, until this one finishes/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Check now" })).toBeNull();
   });
 });
 

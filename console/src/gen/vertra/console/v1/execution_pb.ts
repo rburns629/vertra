@@ -302,7 +302,8 @@ export type Execution = Message<"vertra.console.v1.Execution"> & {
   teams: string[];
 
   /**
-   * The submitter's email, or "(deleted account)".
+   * The submitter's email, "(deleted account)", or "the readiness check"
+   * for a product's check (the console's own run).
    *
    * @generated from field: string submitted_by = 6;
    */

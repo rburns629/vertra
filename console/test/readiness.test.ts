@@ -118,6 +118,9 @@ describe("a product's check", () => {
     expect(ours.map((d) => d.tasks)).toEqual([[expect.objectContaining({ id: "check", action: "ready", inputs: {} })]]);
     const [run] = await db.select().from(submittedExecutions).where(eq(submittedExecutions.name, `Check: ${prov}-svc-ready`));
     expect(run).toMatchObject({ template: "check", submittedBy: null });
+    // Its page says the check started it, not a deleted account.
+    const shown = await call<{ execution?: { submittedBy?: string } }>(maintainerToken, "ExecutionService/GetExecution", { executionId: run?.executionId });
+    expect(shown.body.execution?.submittedBy).toBe("the readiness check");
     expect((await readinessRow())?.state).toBe("checking");
     vi.mocked(submitExecution).mockClear();
     await checkDue(silent);

@@ -100,8 +100,9 @@ export function endpoints(openapi: unknown): { method: string; path: string; sum
   return out;
 }
 
+/** Whether one of the caller's teams may call it: calls are made as a team, so as the gateway's callingTeam, no team, no call. */
 function mayCall(caller: AuthUser, api: Api): boolean {
-  return caller.teamNames.includes(api.teamName) || api.shareWith.includes("*") || api.shareWith.some((t) => caller.teamNames.includes(t));
+  return caller.teamNames.some((t) => t === api.teamName || api.shareWith.includes("*") || api.shareWith.includes(t));
 }
 
 /** Whether the caller may see the API at all: it isn't hidden, or it's their team's (or they're an admin). */
@@ -169,7 +170,8 @@ function view(caller: AuthUser, api: Api, base: string | null, problem: Problem 
     maxRequestBytes: api.maxRequestBytes,
     sourcePath: api.sourcePath ?? "",
     ...limitsOf(api),
-    askForAccessUrl: catalogLinks(base, api.sourcePath ?? null, "the API", `${api.teamName}/${api.name}`, caller, mayCall(caller, api)).askForAccessUrl ?? "",
+    // Shared with everyone, asking for it can't help: a caller without a team needs one.
+    askForAccessUrl: catalogLinks(base, api.sourcePath ?? null, "the API", `${api.teamName}/${api.name}`, caller, mayCall(caller, api) || api.shareWith.includes("*")).askForAccessUrl ?? "",
     backendUrl: own ? api.backendUrl : "",
     backendAuth: own ? authKind(api.backendAuth) : "",
     specTitle: typeof info["title"] === "string" ? info["title"] : "",

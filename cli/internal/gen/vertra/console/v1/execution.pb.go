@@ -577,7 +577,8 @@ type Execution struct {
 	State       ExecutionState         `protobuf:"varint,3,opt,name=state,proto3,enum=vertra.console.v1.ExecutionState" json:"state,omitempty"`
 	Tasks       []*TaskStatus          `protobuf:"bytes,4,rep,name=tasks,proto3" json:"tasks,omitempty"`
 	Teams       []string               `protobuf:"bytes,5,rep,name=teams,proto3" json:"teams,omitempty"`
-	// The submitter's email, or "(deleted account)".
+	// The submitter's email, "(deleted account)", or "the readiness check"
+	// for a product's check (the console's own run).
 	SubmittedBy string                 `protobuf:"bytes,6,opt,name=submitted_by,json=submittedBy,proto3" json:"submitted_by,omitempty"`
 	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// The DAG as submitted, images pinned.

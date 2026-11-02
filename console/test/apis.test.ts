@@ -170,6 +170,20 @@ describe("who sees what", () => {
     expect((await call(tokens.outsider, "ApiService/GetApi", { team: owner, name: "ledger" })).code).toBe("not_found");
   });
 
+  it("lets only a team call one shared with everyone, as the gateway does: an admin in no team may not", async () => {
+    await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [], perMinute: {} }), api("legacy", { backendUrl: "https://old.example.com", shareWith: ["*"] })]);
+    const adminUser = await users.makeUser({ admin: true });
+    try {
+      const teamless = ((await call<Listed>(await users.signIn(adminUser.email), "ApiService/ListApis")).body.apis ?? []).find((a) => a.team === owner && a.name === "legacy");
+      expect(teamless?.mayCall ?? false).toBe(false);
+      expect(teamless?.perMinute ?? 0).toBe(0);
+      expect(teamless?.askForAccessUrl ?? "").toBe("");
+      expect((await listFor("outsider")).find((a) => a.name === "legacy")?.mayCall).toBe(true);
+    } finally {
+      await apply([api("orders", { internet: true }), api("ledger", { hidden: true, shareWith: [], perMinute: {} }), api("legacy", { backendUrl: "https://old.example.com" })]);
+    }
+  });
+
   it("offers whoever may not call it an issue asking its team to share it, and nobody else", async () => {
     const ask = new URL((await listFor("outsider")).find((a) => a.name === "orders")?.askForAccessUrl ?? "");
     expect(`${ask.origin}${ask.pathname}`).toBe("https://github.com/acme/vertra-catalog/issues/new");
