@@ -172,7 +172,8 @@ message Execution {
   ExecutionState state = 3;
   repeated TaskStatus tasks = 4;
   repeated string teams = 5;
-  // The submitter's email, or "(deleted account)".
+  // The submitter's email, "(deleted account)", or "the readiness check"
+  // for a product's check (the console's own run).
   string submitted_by = 6;
   google.protobuf.Timestamp created_at = 7;
   // The DAG as submitted, images pinned.

@@ -57,7 +57,7 @@ Click an API to open its page, one page from top to bottom. Everyone who can see
 - **What happens to a request**: the gateway's checks, in order.
 - **Download its OpenAPI file**: the spec as JSON, to generate a client or read the schemas.
 
-If the API isn't shared with your teams, the page says so: the gateway refuses your calls with 403.
+If the API isn't shared with your teams, the page says so: the gateway refuses your calls with 403. Calls are made as one of your teams, so an account in no team can't call any API, not even one shared with everyone.
 
 Its own team and admins also get a pill saying **You maintain it**, **Your team's** or **Viewing as admin**, and the parts only they see, linked from **On this page**: **Endpoints and traffic** (each endpoint's traffic, [traffic](#watching-your-apis-traffic)), **Backend and pausing** ([pausing](#pausing-an-api-during-an-incident)) and **Backend logs** ([logs](#where-are-my-api-backends-logs)).
 
@@ -110,7 +110,7 @@ The API's page shows these steps too, as **What happens to a request**.
 
 ## What does each gateway error mean?
 
-The gateway's own answers are JSON, `{"error": "<code>", "message": "…"}`, and a 400 adds `problems`: what the spec wanted, never the values you sent.
+The gateway's own answers are JSON, `{"error": "<code>", "message": "…"}`, and a 400 adds `problems`, a line each: the field and the rule it broke (`quantity: minimum 1`, `lines[0].sku: maxLength 12`, `name: required`), never the values you sent.
 
 | Status | `error` | Means | What to do |
 | --- | --- | --- | --- |

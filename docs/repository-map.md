@@ -388,7 +388,7 @@ Run against a real, migrated Postgres (`execution_console_test`).
 | Path | What it's for |
 | --- | --- |
 | `cmd/gateway/main.go` | Reads its settings, the published APIs (every few seconds) and serves: inside the cluster, optionally a public listener, and metrics. |
-| `internal/gateway/` | The request path: the API, paused or held, who's calling, shared with them, size, the spec (404 when not in it, 400 when unfit), the team's rate, then forwarded with the backend's credential and a signed `Vertra-Caller`, the answer streamed back. |
+| `internal/gateway/` | The request path: the API, paused or held, who's calling, shared with them, size, the spec (404 when not in it, 400 when unfit, `problems.go` saying each field and the rule it broke, never the value), the team's rate, then forwarded with the backend's credential and a signed `Vertra-Caller`, the answer streamed back. |
 | `internal/auth/` | Signing callers in as the console does: session JWTs (checked with the console's public key, fetched from its JWKS: `keys.go`) and bot tokens, against its database. |
 | `internal/store/` | The published APIs from the console's `apis` table, each with its OpenAPI validator and endpoints, and why one can't be served (written to the console's `api_problems`); whether an admin closed the gateway; the backend host rule. |
 | `internal/credentials/` | Signing a forwarded request in to its backend, from the API's own ServiceAccount: its token (TokenRequest), a Google ID token (federated at Google's STS, then generateIdToken), or AWS SigV4 (AssumeRoleWithWebIdentity); each kept for most of its life. |

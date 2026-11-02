@@ -100,8 +100,14 @@ export function endpoints(openapi: unknown): { method: string; path: string; sum
   return out;
 }
 
+/** The team a call is made as, as the gateway's callingTeam picks it: the API's own, else the first of the caller's it's shared with; none, no call. */
+function callingTeam(caller: AuthUser, api: Api): string | undefined {
+  if (caller.teamNames.includes(api.teamName)) return api.teamName;
+  return caller.teamNames.find((t) => api.shareWith.includes("*") || api.shareWith.includes(t));
+}
+
 function mayCall(caller: AuthUser, api: Api): boolean {
-  return caller.teamNames.includes(api.teamName) || api.shareWith.includes("*") || api.shareWith.some((t) => caller.teamNames.includes(t));
+  return callingTeam(caller, api) !== undefined;
 }
 
 /** Whether the caller may see the API at all: it isn't hidden, or it's their team's (or they're an admin). */
@@ -110,14 +116,14 @@ export function sees(caller: AuthUser, api: Pick<Api, "hidden" | "teamName">): b
 }
 
 /**
- * The most requests a minute any of the caller's teams may send it, as the
- * gateway counts them: the team's own limit, else the API's default, else
- * the gateway's (0 in either means unset there too).
+ * The requests a minute the caller may send it, as the gateway counts them
+ * (without Vertra-Team): the calling team's own limit, else the API's
+ * default, else the gateway's (0 in either means unset there too).
  */
 function perMinuteFor(caller: AuthUser, api: Api): number {
-  if (!mayCall(caller, api)) return 0;
-  const fallback = api.perMinute["default"] || config.gateway.defaultPerMinute;
-  return Math.max(fallback, ...caller.teamNames.map((t) => api.perMinute[t] || fallback));
+  const team = callingTeam(caller, api);
+  if (team === undefined) return 0;
+  return api.perMinute[team] || api.perMinute["default"] || config.gateway.defaultPerMinute;
 }
 
 /** Its limits as the gateway counts them: each team api.yaml names, and everyone else's default. */
@@ -169,7 +175,8 @@ function view(caller: AuthUser, api: Api, base: string | null, problem: Problem 
     maxRequestBytes: api.maxRequestBytes,
     sourcePath: api.sourcePath ?? "",
     ...limitsOf(api),
-    askForAccessUrl: catalogLinks(base, api.sourcePath ?? null, "the API", `${api.teamName}/${api.name}`, caller, mayCall(caller, api)).askForAccessUrl ?? "",
+    // Shared with everyone, asking for it can't help: a caller without a team needs one.
+    askForAccessUrl: catalogLinks(base, api.sourcePath ?? null, "the API", `${api.teamName}/${api.name}`, caller, mayCall(caller, api) || api.shareWith.includes("*")).askForAccessUrl ?? "",
     backendUrl: own ? api.backendUrl : "",
     backendAuth: own ? authKind(api.backendAuth) : "",
     specTitle: typeof info["title"] === "string" ? info["title"] : "",

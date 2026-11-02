@@ -63,6 +63,7 @@ import { missingImages, pinImages } from "../registry.js";
 import { platformAlert } from "../notifier.js";
 import { scanBlocker } from "../scanning.js";
 import { narrowWiredTargets, targetProblems, targetsNeedApproval } from "../targets.js";
+import { CHECK_RUN } from "../readiness.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -956,7 +957,8 @@ export async function executionDetail(caller: AuthUser | undefined, executionId:
         : null,
     })),
     teams: submitted.teams,
-    submittedBy: submitter?.email ?? (submitted.submittedBy === null ? "(deleted account)" : null),
+    // A readiness check is the console's own run: no account submitted it.
+    submittedBy: submitter?.email ?? (submitted.template === CHECK_RUN ? "the readiness check" : submitted.submittedBy === null ? "(deleted account)" : null),
     createdAt: submitted.createdAt,
     payload: visiblePayload(submitted.payload, view),
     runBlocked: blocker,

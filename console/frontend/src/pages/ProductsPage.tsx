@@ -417,6 +417,11 @@ function ReadinessDetail({ product, install }: { product: Product; install: stri
           </>
         )}
       </Typography>
+      {r.state === "checking" && (r.missing.length > 0 || r.detail || r.principal) && (
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+          Shown here is its last check&apos;s answer, until this one finishes.
+        </Typography>
+      )}
       {r.missing.length > 0 && (
         <Box component="ul" sx={{ m: 0, pl: 2.25 }}>
           {r.missing.map((m) => (

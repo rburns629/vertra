@@ -88,20 +88,13 @@ it was seen.
   10 GiB, the bundled Prometheus's 2 GiB); their CPU and memory are counted.
 
 Console and gateway:
-- [ ] A SecretStore file the cluster refuses (ESO missing, say) still
-  leaves its ServiceAccounts and `eso-auth` written: the console writes
-  them before the store. Write the store first, or remove them on failure.
-- [ ] **The console says a teamless admin may call an API the gateway
-  refuses** (`mayCall` true on a `shareWith: *` API; the gateway answers
-  NOT_SHARED, as a caller needs a team). Make them agree.
-- [ ] **`INVALID_REQUEST` doesn't say what's wrong**: only "does not meet the
-  schema requirements of the specification". Name the field and the rule
-  (`quantity`: minimum 1), never the value.
 - [ ] **Observe's alerts with Google's managed Prometheus** say "not
   configured": the console reads `/api/v1/rules`, which GMP doesn't serve.
-- [ ] A readiness check's run says submitted by "(deleted account)" (it was
-  the system); while a check is running, the product shows the last
-  answer's missing list without saying it's the last answer.
+  It could list the charts' `Rules` from the cluster (a read on
+  `rules.monitoring.googleapis.com`) and which fire from GMP's query API
+  (`ALERTS`, at `monitoring.googleapis.com/v1/projects/<p>/location/global/prometheus`),
+  which needs the console's Google identity granted `roles/monitoring.viewer`
+  (the gcp module) and a GKE run to prove. Card's text on the canvas first.
 
 Kernel and alerts:
 - [ ] **No alert for dispatched steps whose Pods can't be scheduled** (GKE

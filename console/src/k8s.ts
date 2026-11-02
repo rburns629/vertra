@@ -743,8 +743,11 @@ export async function applySecretStoreObjects(
   objects: { kind: string; apiVersion: string; metadata: { name: string; annotations?: Record<string, string> }; spec?: unknown }[],
   credential: string | undefined,
 ): Promise<void> {
-  const { core, custom } = getApis();
+  const { core } = getApis();
   await ensureNamespaceExists(namespace);
+  // The cluster checks the stores first, so one it refuses (ESO missing,
+  // a spec its CRD doesn't take) leaves nothing of the file written.
+  await writeSecretStores(namespace, objects, true);
   if (credential !== undefined) {
     const body = {
       metadata: { name: SECRET_STORE_CREDENTIAL, namespace, labels: { "app.kubernetes.io/component": "secret-store-credential" } },
@@ -770,6 +773,14 @@ export async function applySecretStoreObjects(
       await core.createNamespacedServiceAccount({ namespace, body });
     }
   }
+  // Last, once what they sign in with is there.
+  await writeSecretStores(namespace, objects, false);
+}
+
+/** Each SecretStore created or replaced; with dryRun, only checked by the cluster (ESO's CRD, admission), nothing written. */
+async function writeSecretStores(namespace: string, objects: { kind: string; apiVersion: string; metadata: { name: string }; spec?: unknown }[], dryRun: boolean): Promise<void> {
+  const { custom } = getApis();
+  const dry = dryRun ? { dryRun: "All" } : {};
   for (const object of objects.filter((o) => o.kind === "SecretStore")) {
     const [group, version] = object.apiVersion.split("/");
     const name = object.metadata.name;
@@ -786,10 +797,11 @@ export async function applySecretStoreObjects(
         ...target,
         name,
         body: { ...body, metadata: { ...body.metadata, resourceVersion: existing.metadata?.resourceVersion } },
+        ...dry,
       });
     } catch (error) {
       if (!isNotFound(error)) throw error;
-      await createEsoObject({ ...target, body });
+      await createEsoObject({ ...target, body, ...dry });
     }
   }
 }

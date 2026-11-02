@@ -279,7 +279,9 @@ export function ExecutionsListPage() {
   const open = (id: string) => { navigate(`/runs/${encodeURIComponent(id)}`); };
   const toApprove = approvals?.length ?? 0;
   // Yours is "you"; anyone else's by their email.
-  const byWhom = (e: ExecutionSummary) => (!e.submittedBy ? "a deleted account" : e.submittedBy === user?.id ? "you" : e.submittedByEmail || "someone else");
+  // A readiness check (template "check") is the console's own run: no account's.
+  const byWhom = (e: ExecutionSummary) =>
+    e.template === "check" && !e.submittedBy ? "the readiness check" : !e.submittedBy ? "a deleted account" : e.submittedBy === user?.id ? "you" : e.submittedByEmail || "someone else";
   const toggleState = (state: string) => {
     const off = statusFilter === state && fromTile;
     setStatusFilter(off ? "" : state);

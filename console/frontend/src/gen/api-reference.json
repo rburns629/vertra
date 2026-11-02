@@ -3454,7 +3454,7 @@
      "type": "string",
      "repeated": false,
      "optional": false,
-     "comment": "The submitter's email, or \"(deleted account)\"."
+     "comment": "The submitter's email, \"(deleted account)\", or \"the readiness check\"\nfor a product's check (the console's own run)."
     },
     {
      "name": "createdAt",

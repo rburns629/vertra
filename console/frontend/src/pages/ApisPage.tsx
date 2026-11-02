@@ -40,12 +40,16 @@ function gatewayBase(address: string, a: ApiProduct): string {
 
 /** The You column: whether you may call it, and on what terms. */
 function You({ api, mine }: { api: ApiProduct; mine: boolean }) {
+  // Calls are made as a team: someone in none may call nothing.
+  const teamless = (useAuth().user?.teamNames.length ?? 0) === 0;
   const terms = `${String(api.perMinute)} a minute · ${size(api.maxRequestBytes)} · ${String(api.timeoutSeconds)} s`;
   const [label, note] = mine
     ? ["Your team’s", api.state === "PAUSED" ? "every call gets 503 while paused" : api.state === "UNAVAILABLE" ? "every call gets 503 until its spec is fixed" : terms]
     : api.mayCall
       ? ["May call", terms]
-      : ["Not shared", "the gateway answers your calls with 403"];
+      : teamless
+        ? ["In no team", "calls are made as one of your teams: join one to call it"]
+        : ["Not shared", "the gateway answers your calls with 403"];
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
       <Typography variant="body2" sx={{ fontWeight: 500, color: api.mayCall || mine ? "text.primary" : "warning.main" }}>
@@ -54,7 +58,7 @@ function You({ api, mine }: { api: ApiProduct; mine: boolean }) {
       <Typography variant="caption" color="text.secondary">
         {note}
       </Typography>
-      {!api.mayCall && !mine &&
+      {!api.mayCall && !mine && !teamless &&
         (api.askForAccessUrl ? (
           <Link
             href={api.askForAccessUrl}

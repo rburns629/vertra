@@ -354,20 +354,6 @@ func notInSpec(problems []*verrors.ValidationError) bool {
 	return false
 }
 
-// describe is what was wrong, one line each, for the caller: what the
-// spec wanted, never the values sent.
-func describe(problems []*verrors.ValidationError) []string {
-	var out []string
-	for _, p := range problems {
-		line := p.Message
-		if p.Reason != "" {
-			line += ": " + p.Reason
-		}
-		out = append(out, line)
-	}
-	return out
-}
-
 // forwardHeaders are the caller's headers, less what's only for the
 // gateway: hop-by-hop ones, their Authorization (the gateway's sign-in,
 // never the backend's), and any Vertra-* (which only the gateway sets).
