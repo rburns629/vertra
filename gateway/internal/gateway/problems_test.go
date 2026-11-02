@@ -20,6 +20,8 @@ func TestDescribeNamesTheFieldAndTheRuleNeverTheValue(t *testing.T) {
   "/orders/{orderId}": {"get": {"parameters": [
     {"name": "orderId", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^ord_[a-z0-9]{8}$"}},
     {"name": "limit", "in": "query", "schema": {"type": "integer", "maximum": 50}}], "responses": {"200": {"description": "ok"}}}},
+  "/carts/{cartId}": {"post": {"parameters": [{"name": "cartId", "in": "path", "required": true, "schema": {"type": "string"}}],
+    "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object"}}}}, "responses": {"200": {"description": "ok"}}}},
   "/orders": {"post": {"requestBody": {"required": true, "content": {"application/json": {"schema": {
     "type": "object", "required": ["amount", "sku"], "additionalProperties": false, "properties": {
       "amount": {"type": "integer", "minimum": 1}, "sku": {"type": "string", "maxLength": 4},
@@ -40,6 +42,9 @@ func TestDescribeNamesTheFieldAndTheRuleNeverTheValue(t *testing.T) {
 		{"POST", "/orders", `{"amount": -901, "sku": "s3cret", "extra": "s3cret", "lines": [{"qty": -901}]}`,
 			[]string{"amount: minimum 1", "sku: maxLength 4", "lines[0].qty: minimum 1", "extra: not in its schema"}},
 		{"POST", "/orders", `{"amount": "s3cret"}`, []string{"sku: required", "amount: must be integer"}},
+		// The validator's own messages quote the path, path parameters and all.
+		{"POST", "/carts/s3cret", `{not json`, []string{"the body: can't be read as its Content-Type says"}},
+		{"POST", "/carts/s3cret", "", []string{"the body: required"}},
 	} {
 		r, _ := http.NewRequest(tc.method, "http://backend"+tc.url, bytes.NewReader([]byte(tc.body)))
 		r.Header.Set("Content-Type", "application/json")

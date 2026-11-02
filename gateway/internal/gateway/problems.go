@@ -26,23 +26,50 @@ func describe(problems []*verrors.ValidationError) []string {
 			switch {
 			case root == nil:
 				// No detail to read: the rule, from where it is in the schema.
-				keyword := s.KeywordLocation[strings.LastIndex(s.KeywordLocation, "/")+1:]
-				out = append(out, fieldName(p, strings.Split(strings.TrimPrefix(s.FieldPath, "$."), "."))+": breaks its schema's "+keyword)
+				line := fieldName(p, strings.Split(strings.TrimPrefix(s.FieldPath, "$."), ".")) + ": breaks its schema"
+				if keyword := s.KeywordLocation[strings.LastIndex(s.KeywordLocation, "/")+1:]; keyword != "" {
+					line += "'s " + keyword
+				}
+				out = append(out, line)
 			case !seen[root]:
 				seen[root] = true
 				out = appendLeaves(out, p, root)
 			}
 		}
 		if len(out) == before {
-			// Not a schema's rule (a missing parameter, a body that isn't
-			// JSON): the validator's message, which names what, not the value.
-			out = append(out, p.Message)
+			out = append(out, unschematic(p))
 		}
 	}
 	return out
 }
 
+// unschematic is a line for what no schema's rule says (a missing
+// parameter, a body that isn't JSON), fixed here: the validator's messages
+// quote the request's path, and so its path parameters' values.
+func unschematic(p *verrors.ValidationError) string {
+	if p.ParameterName != "" {
+		if strings.Contains(p.Message, "missing") {
+			return p.ParameterName + ": required"
+		}
+		return p.ParameterName + ": doesn't fit its schema"
+	}
+	if p.ValidationType == "requestBody" {
+		switch {
+		case strings.Contains(p.Message, "is empty"):
+			return "the body: required"
+		case strings.Contains(p.Message, "not declared"), strings.Contains(p.Message, "no registered decoder"):
+			return "the body: its Content-Type isn't one this operation takes"
+		}
+		return "the body: can't be read as its Content-Type says"
+	}
+	return "the request: doesn't fit its OpenAPI document (" + p.ValidationType + ")"
+}
+
 func appendLeaves(out []string, p *verrors.ValidationError, e *jsonschema.ValidationError) []string {
+	if _, ok := e.ErrorKind.(*kind.PropertyNames); ok {
+		// Its causes are about the name, at no field of its own.
+		return append(out, fieldName(p, e.InstanceLocation)+": a property's name breaks its propertyNames")
+	}
 	if len(e.Causes) > 0 {
 		for _, c := range e.Causes {
 			out = appendLeaves(out, p, c)
@@ -130,8 +157,15 @@ func rule(k jsonschema.ErrorKind) string {
 		return fmt.Sprintf("maxProperties %d", k.Want)
 	case *kind.UniqueItems:
 		return "uniqueItems: its items must differ"
+	case *kind.Not:
+		return "mustn't match its not schema"
+	case *kind.FalseSchema:
+		return "not allowed"
 	}
-	return "breaks its schema's " + strings.Join(k.KeywordPath(), "/")
+	if path := k.KeywordPath(); len(path) > 0 {
+		return "breaks its schema's " + strings.Join(path, "/")
+	}
+	return "breaks its schema"
 }
 
 func number(r *big.Rat) string {

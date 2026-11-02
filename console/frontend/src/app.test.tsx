@@ -1003,6 +1003,12 @@ describe("an API", () => {
     expect((await screen.findByRole("link", { name: "Ask for access ↗" })).getAttribute("href")).toBe("https://github.com/acme/catalog/issues/new?title=orders");
   });
 
+  it("tells someone in no team to join one, rather than asking for an API shared with everyone", async () => {
+    await renderAt("/apis/payments/orders", { ...ADMIN, teamNames: [], maintainerOf: [] }, { "ApiService/GetApi": { api: { ...ORDERS, mayCall: false }, openapi: "{}" } });
+    expect(await screen.findByText(/You're in no team, and calls are made as one of your teams/)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Ask for access ↗" })).toBeNull();
+  });
+
   it("shows its own team each endpoint's traffic, its backend's logs, and lets a maintainer pause it", async () => {
     const paused: Record<string, unknown>[] = [];
     await renderAt("/apis/payments/orders", { ...MEMBER, teamNames: ["payments"], maintainerOf: ["payments"] }, {

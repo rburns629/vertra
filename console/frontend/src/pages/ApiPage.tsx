@@ -176,7 +176,9 @@ export function ApiPage() {
                     )
                   }
                 >
-                  It isn&apos;t shared with your teams: the gateway refuses your calls (403). Its team decides who may call it, in its api.yaml.
+                  {(user?.teamNames.length ?? 0) === 0
+                    ? "You're in no team, and calls are made as one of your teams: the gateway refuses yours (403). An admin can add you to one."
+                    : "It isn't shared with your teams: the gateway refuses your calls (403). Its team decides who may call it, in its api.yaml."}
                 </Alert>
               )}
             </Box>
