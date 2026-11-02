@@ -138,9 +138,9 @@ func (k *Kubernetes) Watch(ctx context.Context) {
 	k.watch = w
 }
 
-// Unschedulable is how long the longest-unschedulable step Pod has been,
-// from the watch (0 without one).
-func (k *Kubernetes) Unschedulable() time.Duration {
+// Unschedulable is how many step Pods no node has room for now, from the
+// watch (0 without one).
+func (k *Kubernetes) Unschedulable() int {
 	if k.watch == nil || k.watch.pods == nil {
 		return 0
 	}
@@ -150,31 +150,24 @@ func (k *Kubernetes) Unschedulable() time.Duration {
 			pods = append(pods, pod)
 		}
 	}
-	return OldestUnschedulable(pods, time.Now())
+	return CountUnschedulable(pods)
 }
 
-// OldestUnschedulable is how long the longest-unschedulable of these Pods
-// has been (the scheduler found no node with room: the cluster full, or
-// unable to grow); 0 when none is.
-func OldestUnschedulable(pods []*corev1.Pod, now time.Time) time.Duration {
-	var oldest time.Duration
+// CountUnschedulable is how many of these Pods the scheduler found no node
+// with room for (the cluster full, or unable to grow).
+func CountUnschedulable(pods []*corev1.Pod) int {
+	n := 0
 	for _, pod := range pods {
 		if pod.Status.Phase != corev1.PodPending {
 			continue
 		}
 		for _, c := range pod.Status.Conditions {
 			if c.Type == corev1.PodScheduled && c.Status == corev1.ConditionFalse && c.Reason == corev1.PodReasonUnschedulable {
-				since := c.LastTransitionTime.Time
-				if since.IsZero() {
-					since = pod.CreationTimestamp.Time
-				}
-				if age := now.Sub(since); age > oldest {
-					oldest = age
-				}
+				n++
 			}
 		}
 	}
-	return oldest
+	return n
 }
 
 func typesUID(uid string) types.UID { return types.UID(uid) }

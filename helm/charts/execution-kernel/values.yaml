@@ -618,9 +618,10 @@ monitoring:
     labels: {}
     # -- How long the oldest READY step may wait before VertraStepsWaiting.
     readyWaitSeconds: 600
-    # -- How long a started step's Pod may have no node with room for it
-    # before VertraStepsUnschedulable (a new node takes a few minutes).
-    unschedulableSeconds: 600
+    # -- How many minutes started steps may keep having no node with room
+    # (a Pod of theirs in every 5) before VertraStepsUnschedulable; a new
+    # node takes a few. Each Pod is replaced at the start timeout, retried.
+    unschedulableMinutes: 15
 
 migration:
   # Generous on purpose: the migration Job isn't gated on Postgres actually

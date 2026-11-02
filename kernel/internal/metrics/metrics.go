@@ -49,11 +49,13 @@ var (
 		Help: "How long the longest-waiting READY task has been ready; 0 when none is.",
 	})
 
-	// OldestUnschedulable is read from the scheduler's watch of its steps'
-	// Pods (SetUnschedulable); 0 in kernel-api, and before the watch runs.
-	OldestUnschedulable = promauto.NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "kernel_oldest_unschedulable_step_age_seconds",
-		Help: "How long the longest-waiting dispatched step's Pod has been unschedulable (no node has room for it); 0 when none is.",
+	// Unschedulable is read from the scheduler's watch of its steps' Pods
+	// (SetUnschedulable); 0 in kernel-api, and before the watch runs. A
+	// count, not an age: the scheduler replaces a step's Pod that hasn't
+	// started (its start timeout), so no one Pod waits long.
+	Unschedulable = promauto.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "kernel_unschedulable_steps",
+		Help: "Dispatched steps whose Pod no node has room for now.",
 	}, func() float64 {
 		if f := unschedulable.Load(); f != nil {
 			return (*f)()
