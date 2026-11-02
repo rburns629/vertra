@@ -578,6 +578,39 @@ func TestAMissingOrInvalidResultIsARetryableFailure(t *testing.T) {
 	}
 }
 
+// A container that never ended on its own says why: its Pod evicted,
+// disrupted, or gone with its node.
+func TestAContainerThatNeverFinishedSaysWhy(t *testing.T) {
+	ns, name := "demo-3", "ek-greet-1"
+	failed := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}, Status: batchv1.JobStatus{Failed: 1,
+		Conditions: []batchv1.JobCondition{{Type: batchv1.JobFailed, Status: corev1.ConditionTrue}}}}
+	pod := func(status corev1.PodStatus) *corev1.Pod {
+		return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name + "-abcde", Namespace: ns, Labels: map[string]string{"job-name": name}}, Status: status}
+	}
+	for what, c := range map[string]struct {
+		objects []runtime.Object
+		want    string
+	}{
+		"evicted": {[]runtime.Object{failed, pod(corev1.PodStatus{Phase: corev1.PodFailed, Reason: "Evicted",
+			Message: "The node was low on resource: memory. Threshold quantity: 100Mi, available: 80Mi."})},
+			"Its Pod was evicted: The node was low on resource: memory. Threshold quantity: 100Mi, available: 80Mi."},
+		"disrupted": {[]runtime.Object{failed, pod(corev1.PodStatus{Phase: corev1.PodFailed, Conditions: []corev1.PodCondition{{
+			Type: corev1.DisruptionTarget, Status: corev1.ConditionTrue, Reason: "PreemptionByScheduler", Message: "Kubernetes Scheduler: preempting"}}})},
+			"Its Pod was stopped by the cluster (PreemptionByScheduler): Kubernetes Scheduler: preempting."},
+		"gone": {[]runtime.Object{failed}, "Its Pod went away before its container finished: evicted, preempted, deleted, or lost with its node."},
+	} {
+		cl := newCluster(options(), c.objects...)
+		s, err := cl.k.Status(context.Background(), Handle{"namespace": ns, "jobName": name})
+		if err != nil {
+			t.Fatal(what, err)
+		}
+		check(t, what+" state", s.State, Failed)
+		check(t, what+" code", s.Error.Code, "POD_TERMINATED_UNEXPECTEDLY")
+		check(t, what+" retryable", s.Error.Retryable, true)
+		check(t, what+" message", s.Error.Message, c.want)
+	}
+}
+
 // --- an image that can't be pulled ---
 
 const image = "us-central1-docker.pkg.dev/p/catalog-products/demo-3-deploy-product:abc"
@@ -896,4 +929,23 @@ func TestAStepThatCanNeverFitItsTeamFailsAndOneWaitingForRoomDoesnt(t *testing.T
 	check(t, "too big", s.State, Failed)
 	check(t, "code", s.Error.Code, "RESOURCES_NOT_ALLOWED")
 	check(t, "retryable", s.Error.Retryable, false)
+}
+
+// --- Pods no node has room for ---
+
+func TestOldestUnschedulableIsTheLongestWaitingPendingPod(t *testing.T) {
+	now := time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC)
+	pod := func(phase corev1.PodPhase, status corev1.ConditionStatus, reason string, since time.Duration) *corev1.Pod {
+		return &corev1.Pod{Status: corev1.PodStatus{Phase: phase, Conditions: []corev1.PodCondition{{
+			Type: corev1.PodScheduled, Status: status, Reason: reason, LastTransitionTime: metav1.NewTime(now.Add(-since))}}}}
+	}
+	check(t, "none", OldestUnschedulable(nil, now), time.Duration(0))
+	check(t, "the oldest", OldestUnschedulable([]*corev1.Pod{
+		pod(corev1.PodPending, corev1.ConditionFalse, corev1.PodReasonUnschedulable, 3*time.Minute),
+		pod(corev1.PodPending, corev1.ConditionFalse, corev1.PodReasonUnschedulable, 12*time.Minute),
+		// Scheduled, or gated, or finished: not waiting for room.
+		pod(corev1.PodRunning, corev1.ConditionTrue, "", time.Hour),
+		pod(corev1.PodPending, corev1.ConditionFalse, corev1.PodReasonSchedulingGated, time.Hour),
+		pod(corev1.PodFailed, corev1.ConditionFalse, corev1.PodReasonUnschedulable, time.Hour),
+	}, now), 12*time.Minute)
 }

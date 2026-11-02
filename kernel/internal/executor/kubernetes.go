@@ -712,24 +712,58 @@ func (k *Kubernetes) finalize(ctx context.Context, namespace, job string) (termi
 		return terminalRecord{}, err
 	}
 	var logs []string
-	if pod != "" {
-		logs = k.readLogs(ctx, namespace, pod)
+	if pod != nil {
+		logs = k.readLogs(ctx, namespace, pod.Name)
+	}
+	if terminated == nil {
+		return terminalRecord{status: Status{State: Failed, Error: unfinished(pod)}, logs: logs}, nil
 	}
 	return terminalRecord{status: buildStatus(terminated, logs), logs: logs}, nil
 }
 
-func (k *Kubernetes) terminatedContainer(ctx context.Context, namespace, job string) (string, *corev1.ContainerStateTerminated, error) {
+func (k *Kubernetes) terminatedContainer(ctx context.Context, namespace, job string) (*corev1.Pod, *corev1.ContainerStateTerminated, error) {
 	pods, err := k.pods(ctx, namespace, job)
 	if err != nil || len(pods) == 0 {
-		return "", nil, err
+		return nil, nil, err
 	}
-	pod := pods[0]
+	pod := &pods[0]
 	for _, cs := range pod.Status.ContainerStatuses {
 		if cs.Name == containerName && cs.State.Terminated != nil {
-			return pod.Name, cs.State.Terminated, nil
+			return pod, cs.State.Terminated, nil
 		}
 	}
-	return pod.Name, nil, nil
+	return pod, nil, nil
+}
+
+// unfinished is why a finished Job's container never ended on its own:
+// its Pod evicted (a node short of memory or disk), disrupted (preempted,
+// its node drained or removed: the DisruptionTarget condition), or gone.
+func unfinished(pod *corev1.Pod) *domain.StructuredError {
+	e := &domain.StructuredError{Code: "POD_TERMINATED_UNEXPECTEDLY", Retryable: true,
+		Message: "Its Pod went away before its container finished: evicted, preempted, deleted, or lost with its node."}
+	if pod == nil {
+		return e
+	}
+	e.Message = "Its container stopped before it finished, with no reason recorded."
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.DisruptionTarget && c.Status == corev1.ConditionTrue {
+			e.Message = "Its Pod was stopped by the cluster (" + c.Reason + ")" + reasonText(c.Message)
+		}
+	}
+	if pod.Status.Reason == "Evicted" {
+		e.Message = "Its Pod was evicted" + reasonText(pod.Status.Message)
+	}
+	return e
+}
+
+func reasonText(message string) string {
+	if message = strings.TrimSpace(message); message == "" {
+		return "."
+	}
+	if len(message) > 500 {
+		message = message[:500] + "…"
+	}
+	return ": " + strings.TrimSuffix(message, ".") + "."
 }
 
 // readLogs is the container's output: its last LogMaxLines lines, at most
@@ -779,10 +813,6 @@ func splitLines(lines []string) []string {
 }
 
 func buildStatus(terminated *corev1.ContainerStateTerminated, logs []string) Status {
-	if terminated == nil {
-		return Status{State: Failed, Error: &domain.StructuredError{Code: "POD_TERMINATED_UNEXPECTEDLY",
-			Message: "Job finished but no terminated container status was found.", Retryable: true}}
-	}
 	if terminated.Message == "" {
 		tail := logs
 		if len(tail) > 50 {
@@ -898,10 +928,10 @@ func (k *Kubernetes) Logs(ctx context.Context, handle Handle) ([]string, error) 
 		return record.logs, nil
 	}
 	pod, _, err := k.terminatedContainer(ctx, namespace, name)
-	if err != nil || pod == "" {
+	if err != nil || pod == nil {
 		return []string{}, err
 	}
-	return k.readLogs(ctx, namespace, pod), nil
+	return k.readLogs(ctx, namespace, pod.Name), nil
 }
 
 // WaitForChange waits for a watched Job or Pod to change, at most timeout.

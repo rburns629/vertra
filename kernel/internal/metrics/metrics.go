@@ -8,6 +8,7 @@ package metrics
 
 import (
 	"net/http"
+	"sync/atomic"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -48,6 +49,18 @@ var (
 		Help: "How long the longest-waiting READY task has been ready; 0 when none is.",
 	})
 
+	// OldestUnschedulable is read from the scheduler's watch of its steps'
+	// Pods (SetUnschedulable); 0 in kernel-api, and before the watch runs.
+	OldestUnschedulable = promauto.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "kernel_oldest_unschedulable_step_age_seconds",
+		Help: "How long the longest-waiting dispatched step's Pod has been unschedulable (no node has room for it); 0 when none is.",
+	}, func() float64 {
+		if f := unschedulable.Load(); f != nil {
+			return (*f)()
+		}
+		return 0
+	})
+
 	HTTPRequests = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "kernel_http_requests_total",
 		Help: "HTTP requests handled by kernel-api.",
@@ -58,6 +71,11 @@ var (
 		Help: "HTTP request duration in seconds.",
 	}, []string{"method", "path"})
 )
+
+var unschedulable atomic.Pointer[func() float64]
+
+// SetUnschedulable sets what OldestUnschedulable reads at each scrape.
+func SetUnschedulable(f func() float64) { unschedulable.Store(&f) }
 
 // Handler serves /metrics.
 func Handler() http.Handler { return promhttp.Handler() }

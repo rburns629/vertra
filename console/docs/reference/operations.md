@@ -543,6 +543,9 @@ Which Prometheus is `monitoring.provider`, the same in both charts:
   be running; needs kube-state-metrics, so an install that's asleep isn't
   down), `VertraSchedulerFailing`, `VertraStepsWaiting` (the oldest ready
   step waited past `monitoring.alerts.readyWaitSeconds`),
+  `VertraStepsUnschedulable` (a started step's Pod had no node with room
+  past `monitoring.alerts.unschedulableSeconds`: the cluster at its node
+  limit, or out of a quota),
   `VertraConsoleFailing`, `VertraSignInBurst`, `VertraCatalogNotApplying`
   and `VertraGatewayBackendUnreachable`.
 - `monitoring.dashboard.enabled` (console chart): the Grafana dashboard

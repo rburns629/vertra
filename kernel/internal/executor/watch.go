@@ -27,6 +27,8 @@ type jobWatch struct {
 	changed map[string]bool
 	up      map[string]bool
 	wake    chan struct{}
+	// The watched Pods, for Unschedulable.
+	pods cache.Store
 }
 
 func newJobWatch() *jobWatch {
@@ -109,9 +111,11 @@ func (k *Kubernetes) Watch(ctx context.Context) {
 		UpdateFunc: func(_, obj any) { notify(obj) },
 		DeleteFunc: notify,
 	}
+	pods := factory.Core().V1().Pods().Informer()
+	w.pods = pods.GetStore()
 	for kind, informer := range map[string]cache.SharedIndexInformer{
 		"jobs": factory.Batch().V1().Jobs().Informer(),
-		"pods": factory.Core().V1().Pods().Informer(),
+		"pods": pods,
 	} {
 		_ = informer.SetWatchErrorHandlerWithContext(func(_ context.Context, _ *cache.Reflector, err error) {
 			k.log.Warn("watch failed; reading every status from the API until it's back", "kind", kind, "error", err.Error())
@@ -132,6 +136,45 @@ func (k *Kubernetes) Watch(ctx context.Context) {
 		}
 	}()
 	k.watch = w
+}
+
+// Unschedulable is how long the longest-unschedulable step Pod has been,
+// from the watch (0 without one).
+func (k *Kubernetes) Unschedulable() time.Duration {
+	if k.watch == nil || k.watch.pods == nil {
+		return 0
+	}
+	var pods []*corev1.Pod
+	for _, obj := range k.watch.pods.List() {
+		if pod, ok := obj.(*corev1.Pod); ok {
+			pods = append(pods, pod)
+		}
+	}
+	return OldestUnschedulable(pods, time.Now())
+}
+
+// OldestUnschedulable is how long the longest-unschedulable of these Pods
+// has been (the scheduler found no node with room: the cluster full, or
+// unable to grow); 0 when none is.
+func OldestUnschedulable(pods []*corev1.Pod, now time.Time) time.Duration {
+	var oldest time.Duration
+	for _, pod := range pods {
+		if pod.Status.Phase != corev1.PodPending {
+			continue
+		}
+		for _, c := range pod.Status.Conditions {
+			if c.Type == corev1.PodScheduled && c.Status == corev1.ConditionFalse && c.Reason == corev1.PodReasonUnschedulable {
+				since := c.LastTransitionTime.Time
+				if since.IsZero() {
+					since = pod.CreationTimestamp.Time
+				}
+				if age := now.Sub(since); age > oldest {
+					oldest = age
+				}
+			}
+		}
+	}
+	return oldest
 }
 
 func typesUID(uid string) types.UID { return types.UID(uid) }
